@@ -2,6 +2,12 @@
 <html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>가계부</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4fc3b8">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="가계부">
 <style>
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f8f8f8;--card:#fff;--tx:#1b1b1b;--sub:#8a8a8a;--line:#e8e8e8;--box:#f0f1f2;--pt:#4fc3b8}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141516;--card:#1d1f21;--tx:#f0f0f0;--sub:#8d9196;--line:#2d3033;--box:#26292c}}
@@ -315,5 +321,6 @@ function boot(){
   addEventListener('online',()=>setStat('🟢 연결됨'));
   addEventListener('offline',()=>setStat('🟠 오프라인 (연결되면 자동 반영)'));
 }
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 boot();
 </script></body></html>
