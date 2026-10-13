@@ -1,6 +1,6 @@
 {
   "name": "이담이네 가계부",
-  "short_name": "이담이네 가계부",
+  "short_name": "이담이네",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

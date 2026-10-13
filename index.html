@@ -7,7 +7,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="이담이네 가계부">
+<meta name="apple-mobile-web-app-title" content="이담이네">
 <style>
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f8f8f8;--card:#fff;--tx:#1b1b1b;--sub:#8a8a8a;--line:#e8e8e8;--box:#f0f1f2;--pt:#4fc3b8}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141516;--card:#1d1f21;--tx:#f0f0f0;--sub:#8d9196;--line:#2d3033;--box:#26292c}}
@@ -98,6 +98,9 @@ body{padding-bottom:40px}
 #setup button{width:100%;padding:15px;font-size:17px;background:var(--pt);color:#fff;border:0;border-radius:12px}
 .foot{display:flex;justify-content:space-between;align-items:center;padding:16px;font-size:12px;color:var(--sub)}
 .foot button{background:none;border:0;color:var(--sub);font-size:12px}
+.slideL{animation:slL .22s ease-out}.slideR{animation:slR .22s ease-out}
+@keyframes slL{from{transform:translateX(28px);opacity:.4}to{transform:none;opacity:1}}
+@keyframes slR{from{transform:translateX(-28px);opacity:.4}to{transform:none;opacity:1}}
 </style></head><body>
 <div id="setup">
   <h2>💰 이담이네 가계부 연결 설정</h2>
@@ -355,6 +358,21 @@ async function runImport(list){
     alert(list.length+'건을 가져왔어요.');
   }catch(e){fail(e)}
 }
+function stepMonth(n){
+  cur=new Date(cur.getFullYear(),cur.getMonth()+n,1);selDefault();render();
+  ['cal','list'].forEach(id=>{const el=$(id);el.classList.remove('slideL','slideR');void el.offsetWidth;el.classList.add(n>0?'slideL':'slideR')});
+}
+let tx=0,ty=0,tt=0,tok=false;
+const busy=()=>['stats','srch','sheet'].some(id=>$(id).style.display==='block');
+document.addEventListener('touchstart',e=>{
+  if(e.touches.length!==1||busy()||e.target.closest('.wb,input,select,textarea')){tok=false;return}
+  tok=true;tx=e.touches[0].clientX;ty=e.touches[0].clientY;tt=Date.now();
+},{passive:true});
+document.addEventListener('touchend',e=>{
+  if(!tok)return;tok=false;
+  const t=e.changedTouches[0],dx=t.clientX-tx,dy=t.clientY-ty;
+  if(Date.now()-tt<700&&Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.5)stepMonth(dx>0?-1:1);
+},{passive:true});
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 boot();
 </script></body></html>
