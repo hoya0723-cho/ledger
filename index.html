@@ -243,19 +243,19 @@ function renderStats(){
   $('sl').textContent=label;
   const A=ymd(a),B=ymd(b);
   const D=all.filter(t=>t.type===st&&t.date>=A&&t.date<=B&&pass(t)).sort((x,y)=>x.date<y.date?-1:x.date>y.date?1:0);
-  const tot=D.reduce((s,t)=>s+t.amount,0),nm=st==='out'?'지출':'수입';
-  let h=`<div class="tp"><div><span class="lb">총 ${nm}</span><div class="big">${won(tot)}원</div></div><div class="seg tg"><button class="${st==='in'?'on':''}" onclick="setT('in')">수입</button><button class="${st==='out'?'on':''}" onclick="setT('out')">지출</button></div></div>`;
+  const tot=D.reduce((s,t)=>s+t.amount,0),kind=st==='out'?'지출':'수입';
+  let h=`<div class="tp"><div><span class="lb">총 ${kind}</span><div class="big">${won(tot)}원</div></div><div class="seg tg"><button class="${st==='in'?'on':''}" onclick="setT('in')">수입</button><button class="${st==='out'?'on':''}" onclick="setT('out')">지출</button></div></div>`;
   h+=`<div class="fl2"><select onchange="fc=this.value;exp=false;renderStats()"><option value="">카테고리</option>${ALLCAT.map(c=>`<option ${fc===c?'selected':''}>${c}</option>`).join('')}</select><select onchange="fw=this.value;renderStats()"><option value="">구성원</option>${WHO.map(c=>`<option value="${c}" ${fw===c?'selected':''}>${nm(c)}</option>`).join('')}</select><button onclick="fc='';fw='';exp=false;renderStats()">↺</button></div>`;
   if(!D.length){$('sb').innerHTML=h+'<div class="none">이 기간에는 내역이 없어요</div>';return}
   const grp=key=>{const m={};D.forEach(t=>{const k=key(t);m[k]=(m[k]||0)+t.amount});return Object.entries(m).sort((x,y)=>y[1]-x[1])};
   const pc=v=>Math.round(v/tot*100);
   const stack=(rows,cf)=>`<div class="stk">${rows.map(r=>`<div style="width:${r[1]/tot*100}%;background:${cf(r[0])}"></div>`).join('')}</div>`;
   const cats=grp(t=>t.cat||'기타'),shown=exp?cats:cats.slice(0,4);
-  h+=`<div class="card"><h4>📁 카테고리별 ${nm}</h4>${stack(cats,k=>COL[k]||'#9aa0a6')}`
+  h+=`<div class="card"><h4>📁 카테고리별 ${kind}</h4>${stack(cats,k=>COL[k]||'#9aa0a6')}`
     +shown.map(r=>`<div class="ci"><div class="cq" style="background:${COL[r[0]]||'#9aa0a6'}33">${(CAT[st].find(c=>c[0]===r[0])||CAT.out.concat(CAT.in).find(c=>c[0]===r[0])||['','📝'])[1]}</div><div class="m">${r[0]}<small>${pc(r[1])}%</small></div><div>${won(r[1])}원</div></div>`).join('')
     +(cats.length>4?`<div class="more" onclick="exp=!exp;renderStats()">${exp?'접기 ⌃':'더보기 ⌄'}</div>`:'')+'</div>';
   const ws=grp(t=>t.who||'우리');
-  h+=`<div class="card"><h4>👥 구성원별 ${nm}</h4>${stack(ws,k=>WCOL[k]||'#999')}`
+  h+=`<div class="card"><h4>👥 구성원별 ${kind}</h4>${stack(ws,k=>WCOL[k]||'#999')}`
     +ws.map(r=>`<div class="wi"><i style="background:${WCOL[r[0]]||'#999'}"></i><div class="m">${nm(r[0])}<small>${pc(r[1])}%</small></div><div>${won(r[1])}원</div></div>`).join('')+'</div>';
   if(sp!=='c'){
     const pts=[];
