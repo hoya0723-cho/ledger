@@ -345,6 +345,7 @@ function settings(){
 function listen(){
   col().onSnapshot({includeMetadataChanges:true},snap=>{
     all=snap.docs.map(d=>({id:d.id,...d.data()}));render();
+    if(pendingCancel&&!snap.metadata.fromCache)runCancel();
     if($('stats').style.display==='block')renderStats();
     if($('srch').style.display==='block')renderSearch();
     setStat(!navigator.onLine?'🟠 오프라인 (연결되면 자동 반영)':snap.metadata.hasPendingWrites?'🟡 동기화 중…':'🟢 동기화됨');
@@ -461,13 +462,30 @@ function parseNoti(raw){
   }
   return{cancel:/취소/.test(head),amount,merchant,date};
 }
+let pendingCancel=null,cancelTimer=null;
+function runCancel(){
+  if(!pendingCancel)return;
+  const r=pendingCancel;pendingCancel=null;clearTimeout(cancelTimer);
+  if(!db){alert('연결이 안 돼서 취소 내역을 처리하지 못했어요.\n잠시 뒤 가계부에서 직접 삭제해 주세요.');return}
+  const byNew=(a,b)=>(b.date||'').localeCompare(a.date||'')||String(b.id).localeCompare(String(a.id));
+  const same=all.filter(x=>x.type==='out'&&Number(x.amount)===r.amount).sort(byNew);
+  const t=same.find(x=>(x.memo||'')===r.merchant)||same[0];
+  if(!t){alert('결제 취소 알림이에요.\n'+won(r.amount)+'원 지출 내역을 가계부에서 찾지 못했어요.\n이미 지웠거나 입력하지 않은 내역일 수 있어요.');return}
+  const d=t.date.split('-');
+  cur=new Date(+d[0],+d[1]-1,1);sel=t.date;render();
+  if(confirm('결제 취소 알림이에요.\n\n'+(+d[1])+'월 '+(+d[2])+'일 · '+(t.memo||t.cat)+' · '+won(Number(t.amount))+'원\n\n이 내역을 삭제할까요?'))
+    col().doc(t.id).delete().catch(fail);
+}
 function handleIncoming(){
   const m=location.href.match(/[?&]n=([\s\S]*)$/);if(!m)return;
   const raw=m[1];
   try{history.replaceState(history.state,'',location.pathname)}catch(e){}
   if(!fbcfg||!code)return;
   const r=parseNoti(raw);
-  if(r.cancel){alert('결제 취소 알림이에요.'+(r.amount?'\n금액: '+won(r.amount)+'원':'')+'\n가계부에서 해당 내역을 찾아 직접 삭제해 주세요.');return}
+  if(r.cancel){
+    if(!r.amount){alert('취소 알림에서 금액을 찾지 못했어요.');return}
+    pendingCancel=r;cancelTimer=setTimeout(runCancel,5000);return;
+  }
   if(!r.amount){let t=raw;try{t=decodeURIComponent(raw)}catch(e){}alert('알림에서 금액을 찾지 못했어요.\n\n받은 글:\n'+t.slice(0,200));return}
   const[y,mo]=r.date.split('-');cur=new Date(+y,+mo-1,1);sel=r.date;render();
   f={type:'out',cat:guessCat(r.merchant),who:'우리',memo:r.merchant,amount:String(r.amount),date:r.date,auto:true};
