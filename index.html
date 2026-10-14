@@ -420,7 +420,17 @@ function armBack(){
   history.pushState({g:1},'');exitGuard=true;
 }
 function exitCancel(){$('exitBox').style.display='none';history.pushState({g:1},'');exitGuard=true}
-function exitOk(){exiting=true;$('exitBox').style.display='none';history.back()}
+function exitOk(){
+  exiting=true;$('exitBox').style.display='none';
+  try{window.close()}catch(e){}
+  setTimeout(()=>{
+    history.back();
+    setTimeout(()=>{
+      exitGuard=true;
+      alert('자동으로 종료되지 않았어요.\n폰의 뒤로가기를 한 번 더 눌러 주세요.');
+    },400);
+  },300);
+}
 addEventListener('click',armBack,true);
 addEventListener('touchend',armBack,true);
 addEventListener('popstate',()=>{
