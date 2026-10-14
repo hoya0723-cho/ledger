@@ -2,6 +2,7 @@
 <html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>이담이네 가계부</title>
+<script>try{var _t=localStorage.getItem('theme');if(_t==='light'||_t==='dark')document.documentElement.setAttribute('data-theme',_t)}catch(e){}</script>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#4fc3b8">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -128,7 +129,7 @@ html,body{overflow-x:hidden}
 </div>
 <div class="wrap"><div class="cal" id="cal"></div></div>
 <div id="list"></div>
-<div class="foot"><span id="stat"></span><span><button onclick="openImport()">📥 가져오기</button><button onclick="settings()">⚙ 설정</button></span></div>
+<div class="foot"><span id="stat"></span><span><button id="themeBtn" onclick="cycleTheme()">🌗 화면: 자동</button><button onclick="openImport()">📥 가져오기</button><button onclick="settings()">⚙ 설정</button></span></div>
 <input type="file" id="imf" accept=".json,application/json" style="display:none" onchange="readImport(this)">
 <div id="stats">
   <div class="sh"><button onclick="closeStats()">‹</button><b>통계</b><span style="width:32px"></span></div>
@@ -313,6 +314,19 @@ function fail(e){
   const c=(e&&e.code)||'';
   setStat('🔴 '+(c==='permission-denied'?'권한 오류: Firestore 규칙을 확인해주세요':c==='auth/operation-not-allowed'?'익명 로그인이 꺼져 있어요':'연결 오류: '+(c||(e&&e.message))));
 }
+const TLAB={auto:'🌗 화면: 자동',light:'☀️ 화면: 밝게',dark:'🌙 화면: 어둡게'};
+function applyTheme(){
+  let t=localStorage.getItem('theme');if(!TLAB[t])t='auto';
+  if(t==='auto')document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme',t);
+  const b=$('themeBtn');if(b)b.textContent=TLAB[t];
+}
+function cycleTheme(){
+  const cur=localStorage.getItem('theme')||'auto';
+  const nx={auto:'light',light:'dark',dark:'auto'}[cur]||'light';
+  localStorage.setItem('theme',nx);applyTheme();
+}
+applyTheme();
 function settings(){
   if(confirm('가족 코드: '+code+'\n\n연결 설정을 지우고 처음 화면으로 돌아갈까요?\n(서버에 저장된 내역은 지워지지 않아요)')){
     localStorage.removeItem('fb');localStorage.removeItem('code');location.reload();
