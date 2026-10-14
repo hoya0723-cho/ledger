@@ -43,12 +43,7 @@ body{padding-bottom:40px}
 .empty button{background:var(--tx);color:var(--bg);border:0;border-radius:30px;padding:16px 36px;font-size:16px}
 #mask{position:fixed;inset:0;background:#0006;display:none}
 #sheet{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-radius:20px 20px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));display:none;max-height:90vh;overflow:auto}
-#exitBox{position:fixed;inset:0;background:#0008;display:none;align-items:center;justify-content:center;z-index:100;padding:24px}
-#exitBox .bx{background:var(--card);color:var(--tx);border-radius:18px;padding:26px 18px 18px;width:100%;max-width:320px;text-align:center}
-#exitBox p{margin:0 0 22px;font-size:17px;font-weight:600}
-#exitBox .bt{display:flex;gap:10px}
-#exitBox button{flex:1;padding:14px;font-size:16px;border:0;border-radius:12px;background:var(--box);color:var(--tx)}
-#exitBox button.ok{background:var(--pt);color:#fff}
+#exitToast{position:fixed;left:50%;bottom:calc(60px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#000c;color:#fff;padding:11px 20px;border-radius:24px;font-size:15px;white-space:nowrap;display:none;z-index:100}
 .seg{display:flex;background:var(--box);border-radius:10px;padding:3px;margin-bottom:12px}
 .seg button{flex:1;border:0;background:none;padding:9px;border-radius:8px;font-size:15px;color:var(--sub)}
 .seg button.on{background:var(--card);color:var(--tx);font-weight:600}
@@ -152,7 +147,7 @@ html,body{overflow-x:hidden}
 </div>
 <div id="mask" onclick="closeForm()"></div>
 <div id="sheet"></div>
-<div id="exitBox"><div class="bx"><p>앱을 종료할까요?</p><div class="bt"><button onclick="exitCancel()">취소</button><button class="ok" onclick="exitOk()">종료</button></div></div></div>
+<div id="exitToast">한 번 더 누르면 종료돼요</div>
 
 </div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -428,31 +423,20 @@ document.addEventListener('touchend',e=>{
   if(Date.now()-tt<700&&Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.5)stepMonth(dx>0?-1:1);
 },{passive:true});
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
-// 뒤로가기 → 종료 확인
-let exitGuard=false,exiting=false;
+// 뒤로가기 → 안내 후 2초 안에 한 번 더 누르면 종료
+let exitGuard=false,exitTimer=null;
 function armBack(){
   if(exitGuard)return;
   if(history.state&&history.state.g){exitGuard=true;return}
   history.pushState({g:1},'');exitGuard=true;
 }
-function exitCancel(){$('exitBox').style.display='none';history.pushState({g:1},'');exitGuard=true}
-function exitOk(){
-  exiting=true;$('exitBox').style.display='none';
-  try{window.close()}catch(e){}
-  setTimeout(()=>{
-    history.back();
-    setTimeout(()=>{
-      exitGuard=true;
-      alert('자동으로 종료되지 않았어요.\n폰의 뒤로가기를 한 번 더 눌러 주세요.');
-    },400);
-  },300);
-}
 addEventListener('click',armBack,true);
 addEventListener('touchend',armBack,true);
 addEventListener('popstate',()=>{
-  if(exiting)return;
   exitGuard=false;
-  $('exitBox').style.display='flex';
+  $('exitToast').style.display='block';
+  clearTimeout(exitTimer);
+  exitTimer=setTimeout(()=>{$('exitToast').style.display='none';armBack()},2000);
 });
 // 카드 알림 자동 입력 (주소 뒤에 ?n=제목||내용 이 붙어서 열릴 때)
 const CAT_KW=[
