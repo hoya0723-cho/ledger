@@ -16,6 +16,7 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Noto Sans KR",sans-serif}
 body{padding-bottom:40px}
+.notice{display:none;background:var(--pt);color:#fff;padding:9px 16px;font-size:14px;line-height:1.4;white-space:pre-wrap;word-break:break-word}
 .head{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;background:var(--card)}
 .ttl{position:relative;font-size:22px;font-weight:600}
 .ttl input{position:absolute;inset:0;opacity:0;width:100%}
@@ -123,6 +124,7 @@ html,body{overflow-x:hidden}
   <button onclick="saveSetup()">시작하기</button>
 </div>
 <div id="app" style="display:none">
+<div id="notice" class="notice" onclick="editNotice()"></div>
 <div class="head">
   <label class="ttl"><span id="ym"></span> ⌄<input type="month" id="mp" onchange="pick(this.value)"></label>
   <div><button class="plus" onclick="openSearch()" style="font-size:20px;font-weight:400">🔍</button><button class="plus" onclick="openStats()" style="font-size:22px;font-weight:400">📊</button><button class="plus" onclick="openForm()">+</button></div>
@@ -135,7 +137,7 @@ html,body{overflow-x:hidden}
 </div>
 <div class="wrap"><div class="cal" id="cal"></div></div>
 <div id="list"></div>
-<div class="foot"><span id="stat"></span><span><button id="themeBtn" onclick="cycleTheme()">🌗 화면: 자동</button><button onclick="openImport()">📥 가져오기</button><button onclick="settings()">⚙ 설정</button></span></div>
+<div class="foot"><span id="stat"></span><span><button id="themeBtn" onclick="cycleTheme()">🌗 화면: 자동</button><button onclick="editNotice()">📢 공지</button><button onclick="openImport()">📥 가져오기</button><button onclick="settings()">⚙ 설정</button></span></div>
 <input type="file" id="imf" accept=".json,application/json" style="display:none" onchange="readImport(this)">
 <div id="stats">
   <div class="sh"><button onclick="closeStats()">‹</button><b>통계</b><span style="width:32px"></span></div>
@@ -342,7 +344,21 @@ function settings(){
     localStorage.removeItem('fb');localStorage.removeItem('code');location.reload();
   }
 }
+let noticeText='';
+const noticeRef=()=>db.collection('families').doc(code).collection('meta').doc('notice');
+function renderNotice(){
+  const el=$('notice');el.textContent=noticeText?'📢 '+noticeText:'';
+  el.style.display=noticeText?'block':'none';
+}
+function editNotice(){
+  if(!db)return alert('연결된 뒤에 다시 시도해주세요.');
+  const v=prompt('공지 메시지를 입력하세요.\n가족 모두에게 맨 위에 보여요.\n(비우고 확인하면 공지가 사라져요)',noticeText);
+  if(v===null)return;
+  const t=v.trim().slice(0,200);
+  (t?noticeRef().set({text:t,at:Date.now()}):noticeRef().delete()).catch(fail);
+}
 function listen(){
+  noticeRef().onSnapshot(s=>{noticeText=s.exists?String(s.data().text||''):'';renderNotice()},()=>{});
   col().onSnapshot({includeMetadataChanges:true},snap=>{
     all=snap.docs.map(d=>({id:d.id,...d.data()}));render();
     if(pendingCancel&&!snap.metadata.fromCache)runCancel();
