@@ -221,7 +221,9 @@ function fmtAmt(el){
 function setType(t){f.type=t;f.cat=CAT[t][0][0];drawForm(!!f.id)}
 function commit(isEdit){
   const amount=parseInt(f.amount);if(!amount||amount<=0||!db)return;
-  const o={id:isEdit?f.id:Date.now()+Math.random().toString(36).slice(2,6),date:isEdit?f.date:sel,type:f.type,cat:f.cat,who:f.who||'우리',amount,memo:(f.memo||'').trim()};
+  const date=isEdit?f.date:(f.date||sel),memo=(f.memo||'').trim();
+  if(f.auto&&all.some(x=>x.date===date&&x.amount===amount&&x.memo===memo&&x.type===f.type)&&!confirm('같은 날짜·금액·내용의 내역이 이미 있어요.\n그래도 저장할까요?'))return;
+  const o={id:isEdit?f.id:Date.now()+Math.random().toString(36).slice(2,6),date,type:f.type,cat:f.cat,who:f.who||'우리',amount,memo};
   col().doc(o.id).set(o).catch(fail);closeForm();
 }
 function del(){if(!confirm('삭제할까요?')||!db)return;col().doc(f.id).delete().catch(fail);closeForm()}
@@ -425,5 +427,52 @@ addEventListener('popstate',()=>{
   exitGuard=false;
   $('exitBox').style.display='flex';
 });
+// 카드 알림 자동 입력 (주소 뒤에 ?n=제목||내용 이 붙어서 열릴 때)
+const CAT_KW=[
+  ['카페',['스타벅스','커피','카페','메가MGC','이디야','투썸','빽다방','컴포즈','할리스']],
+  ['편의점',['GS25','세븐일레븐','이마트24','편의점']],
+  ['건강',['약국','병원','의원','치과','한의원']],
+  ['주유비',['주유','SK에너지','GS칼텍스','S-OIL','현대오일']],
+  ['교통',['택시','버스','지하철','티머니','코레일','주차']],
+  ['생필품',['이마트','홈플러스','롯데마트','다이소','쿠팡','코스트코']],
+  ['육아',['아기','유아','키즈','분유','베이비']]
+];
+function guessCat(m){
+  const u=String(m||'').toUpperCase();
+  if(u.startsWith('CU'))return '편의점';
+  for(const[c,ks] of CAT_KW)if(ks.some(k=>u.includes(k.toUpperCase())))return c;
+  return '기타';
+}
+function parseNoti(raw){
+  let s=raw;try{s=decodeURIComponent(raw)}catch(e){}
+  const k=s.indexOf('||');
+  const title=k>=0?s.slice(0,k).trim():'',body=k>=0?s.slice(k+2).trim():s.trim();
+  const head=title||s;
+  const am=head.match(/([\d,]+)\s*원/);
+  const amount=am?parseInt(am[1].replace(/,/g,'')):0;
+  const parts=body.split(' / ');
+  const merchant=(parts[0]||'').replace(/^\([^)]*\)\s*[\d,]+\s*원\s*/,'').trim();
+  const now=new Date();let date=ymd(now);
+  const dm=s.match(/(\d{1,2})\.(\d{1,2})\s+\d{1,2}:\d{2}/);
+  if(dm){
+    let d=new Date(now.getFullYear(),+dm[1]-1,+dm[2]);
+    if(d.getTime()>now.getTime()+86400000)d=new Date(now.getFullYear()-1,+dm[1]-1,+dm[2]);
+    date=ymd(d);
+  }
+  return{cancel:/취소/.test(head),amount,merchant,date};
+}
+function handleIncoming(){
+  const m=location.href.match(/[?&]n=([\s\S]*)$/);if(!m)return;
+  const raw=m[1];
+  try{history.replaceState(history.state,'',location.pathname)}catch(e){}
+  if(!fbcfg||!code)return;
+  const r=parseNoti(raw);
+  if(r.cancel){alert('결제 취소 알림이에요.'+(r.amount?'\n금액: '+won(r.amount)+'원':'')+'\n가계부에서 해당 내역을 찾아 직접 삭제해 주세요.');return}
+  if(!r.amount){let t=raw;try{t=decodeURIComponent(raw)}catch(e){}alert('알림에서 금액을 찾지 못했어요.\n\n받은 글:\n'+t.slice(0,200));return}
+  const[y,mo]=r.date.split('-');cur=new Date(+y,+mo-1,1);sel=r.date;render();
+  f={type:'out',cat:guessCat(r.merchant),who:'우리',memo:r.merchant,amount:String(r.amount),date:r.date,auto:true};
+  drawForm(false);$('mask').style.display='block';$('sheet').style.display='block';
+}
 boot();
+handleIncoming();
 </script></body></html>
