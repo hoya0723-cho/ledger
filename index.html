@@ -436,7 +436,8 @@ const CAT_KW=[
   ['주유비',['주유','SK에너지','GS칼텍스','S-OIL','현대오일']],
   ['교통',['택시','버스','지하철','티머니','코레일','주차']],
   ['생필품',['이마트','홈플러스','롯데마트','다이소','쿠팡','코스트코']],
-  ['육아',['아기','유아','키즈','분유','베이비']]
+  ['육아',['아기','유아','키즈','분유','베이비']],
+  ['통신',['SK텔레콤','유플러스','통신요금']]
 ];
 function guessCat(m){
   const u=String(m||'').toUpperCase();
@@ -444,23 +445,44 @@ function guessCat(m){
   for(const[c,ks] of CAT_KW)if(ks.some(k=>u.includes(k.toUpperCase())))return c;
   return '기타';
 }
+function pickMerchant(body){
+  let m;
+  // 1) "가맹점명 : OOO" 형태
+  if((m=body.match(/가맹점명\s*:\s*([^\n]+)/)))return m[1].trim();
+  // 2) 하나카드 앱 형태: 사용처 / 결제수단 / 날짜 / 누적
+  if(body.includes(' / ')){
+    return body.split(' / ')[0].replace(/^\([^)]*\)\s*-?[\d,]+\s*원\s*/,'').trim();
+  }
+  // 3) 삼성카드 문자 형태: 10/04 22:12 사용처
+  if((m=body.match(/\d{1,2}[./]\d{1,2}[ \t]+\d{1,2}:\d{2}[ \t]+([^\n]+?)[ \t]*(?:\n|누적|$)/)))return m[1].trim();
+  // 4) 롯데카드 형태: 금액 바로 위에 사용처
+  const i=body.search(/[\d,]+\s*원/);
+  if(i>0){
+    let pre=body.slice(0,i).trim().replace(/^(승인취소|결제취소|승인|취소|결제)\s*/,'').trim();
+    const lines=pre.split('\n').map(x=>x.trim()).filter(Boolean);
+    let c=lines[lines.length-1]||'';
+    const h=c.length/2;
+    if(Number.isInteger(h)&&h>0&&c.slice(0,h)===c.slice(h))c=c.slice(0,h);
+    if(c&&!/카드|일시불|할부|승인|취소/.test(c))return c;
+  }
+  return '';
+}
 function parseNoti(raw){
   let s=raw;try{s=decodeURIComponent(raw)}catch(e){}
   const k=s.indexOf('||');
   const title=k>=0?s.slice(0,k).trim():'',body=k>=0?s.slice(k+2).trim():s.trim();
-  const head=title||s;
-  const am=head.match(/([\d,]+)\s*원/);
+  const AMT=/([\d,]+)\s*원/;
+  const am=title.match(AMT)||body.match(AMT);
   const amount=am?parseInt(am[1].replace(/,/g,'')):0;
-  const parts=body.split(' / ');
-  const merchant=(parts[0]||'').replace(/^\([^)]*\)\s*[\d,]+\s*원\s*/,'').trim();
+  const merchant=pickMerchant(body);
   const now=new Date();let date=ymd(now);
-  const dm=s.match(/(\d{1,2})\.(\d{1,2})\s+\d{1,2}:\d{2}/);
-  if(dm){
+  const dm=s.match(/(\d{1,2})[./](\d{1,2})[ \t]+\d{1,2}:\d{2}/)||s.match(/(?<!\d)(\d{1,2})\/(\d{1,2})(?![\d:\/])/);
+  if(dm&&+dm[1]>=1&&+dm[1]<=12&&+dm[2]>=1&&+dm[2]<=31){
     let d=new Date(now.getFullYear(),+dm[1]-1,+dm[2]);
     if(d.getTime()>now.getTime()+86400000)d=new Date(now.getFullYear()-1,+dm[1]-1,+dm[2]);
     date=ymd(d);
   }
-  return{cancel:/취소/.test(head),amount,merchant,date};
+  return{cancel:/취소/.test(s),amount,merchant,date};
 }
 let pendingCancel=null,cancelTimer=null;
 function runCancel(){
