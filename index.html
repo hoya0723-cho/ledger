@@ -101,6 +101,9 @@ body{padding-bottom:40px}
 .slideL{animation:slL .22s ease-out}.slideR{animation:slR .22s ease-out}
 @keyframes slL{from{transform:translateX(28px);opacity:.4}to{transform:none;opacity:1}}
 @keyframes slR{from{transform:translateX(-28px);opacity:.4}to{transform:none;opacity:1}}
+html,body{overflow-x:hidden}
+#app{overflow-x:clip}
+.wrap{overflow:hidden}
 </style></head><body>
 <div id="setup">
   <h2>💰 이담이네 가계부 연결 설정</h2>
@@ -190,11 +193,21 @@ function openForm(id){
 }
 function drawForm(isEdit){
   $('sheet').innerHTML=`<div class="seg"><button class="${f.type==='out'?'on':''}" onclick="setType('out')">지출</button><button class="${f.type==='in'?'on':''}" onclick="setType('in')">수입</button></div>
-  <input id="fa" type="number" inputmode="numeric" placeholder="금액 (원)" value="${f.amount}" oninput="f.amount=this.value">
+  <input id="fa" type="text" inputmode="numeric" autocomplete="off" placeholder="금액 (원)" value="${f.amount?Number(f.amount).toLocaleString('ko-KR'):''}" oninput="fmtAmt(this)">
   <input id="fm" placeholder="내용" value="${esc(f.memo)}" oninput="f.memo=this.value">
   <div class="chips">${CAT[f.type].map(c=>`<button class="${f.cat===c[0]?'on':''}" onclick="f.cat='${c[0]}';drawForm(${isEdit})">${c[1]} ${c[0]}</button>`).join('')}</div>
   <div class="chips">${WHO.map(w=>`<button class="${f.who===w?'on':''}" onclick="f.who='${w}';drawForm(${isEdit})">${nm(w)}</button>`).join('')}</div>
   <div class="btns">${isEdit?'<button class="del" onclick="del()">삭제</button>':''}<button class="save" onclick="commit(${isEdit})">저장</button></div>`;
+}
+function fmtAmt(el){
+  const pos=el.selectionStart==null?el.value.length:el.selectionStart;
+  const before=el.value.slice(0,pos).replace(/\D/g,'').length;
+  const d=el.value.replace(/\D/g,'').replace(/^0+(?=\d)/,'').slice(0,12);
+  f.amount=d;
+  el.value=d?Number(d).toLocaleString('ko-KR'):'';
+  let c=0,n=0;
+  while(c<el.value.length&&n<before){if(/\d/.test(el.value[c]))n++;c++}
+  try{el.setSelectionRange(c,c)}catch(e){}
 }
 function setType(t){f.type=t;f.cat=CAT[t][0][0];drawForm(!!f.id)}
 function commit(isEdit){
