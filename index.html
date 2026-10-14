@@ -42,6 +42,12 @@ body{padding-bottom:40px}
 .empty button{background:var(--tx);color:var(--bg);border:0;border-radius:30px;padding:16px 36px;font-size:16px}
 #mask{position:fixed;inset:0;background:#0006;display:none}
 #sheet{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-radius:20px 20px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));display:none;max-height:90vh;overflow:auto}
+#exitBox{position:fixed;inset:0;background:#0008;display:none;align-items:center;justify-content:center;z-index:100;padding:24px}
+#exitBox .bx{background:var(--card);color:var(--tx);border-radius:18px;padding:26px 18px 18px;width:100%;max-width:320px;text-align:center}
+#exitBox p{margin:0 0 22px;font-size:17px;font-weight:600}
+#exitBox .bt{display:flex;gap:10px}
+#exitBox button{flex:1;padding:14px;font-size:16px;border:0;border-radius:12px;background:var(--box);color:var(--tx)}
+#exitBox button.ok{background:var(--pt);color:#fff}
 .seg{display:flex;background:var(--box);border-radius:10px;padding:3px;margin-bottom:12px}
 .seg button{flex:1;border:0;background:none;padding:9px;border-radius:8px;font-size:15px;color:var(--sub)}
 .seg button.on{background:var(--card);color:var(--tx);font-weight:600}
@@ -144,14 +150,16 @@ html,body{overflow-x:hidden}
 </div>
 <div id="mask" onclick="closeForm()"></div>
 <div id="sheet"></div>
+<div id="exitBox"><div class="bx"><p>앱을 종료할까요?</p><div class="bt"><button onclick="exitCancel()">취소</button><button class="ok" onclick="exitOk()">종료</button></div></div></div>
 
 </div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
-const CAT={out:[['식비','🍚'],['생필품','🧺'],['카페','☕'],['건강','💊'],['주거비','🏠'],['주유비','⛽'],['미용','💇'],['교통','🚌'],['문화','🎬'],['공과금','🧾'],['여행','✈️'],['패션','👕'],['편의점','🏪'],['오락','🎮'],['선물','🎁'],['데이트','💑'],['교육','📚'],['통신','📱'],['기타','📝']],in:[['생활비','💰'],['보너스','🎉'],['이월','🔁'],['기타','📝']]};
+const CAT={out:[['식비','🍚'],['생필품','🛒'],['육아','👶'],['카페','☕'],['건강','💊'],['주거비','🏠'],['주유비','⛽'],['미용','💇'],['교통','🚌'],['문화','🎬'],['공과금','🧾'],['여행','✈️'],['패션','👕'],['편의점','🏪'],['오락','🎮'],['선물','🎁'],['데이트','💑'],['교육','📚'],['통신','📱'],['기타','📝']],in:[['생활비','💰'],['보너스','🎉'],['이월','🔁'],['기타','📝']]};
 const WHO=['나','아내','아기','우리'];
+const FORMWHO=['우리','나','아내','아기'];
 const NM={나:'성호',아내:'서영',아기:'이담',우리:'우리'};
 const nm=w=>NM[w]||w;
 const $=id=>document.getElementById(id),won=n=>n.toLocaleString('ko-KR');
@@ -183,13 +191,13 @@ function render(){
   $('cal').innerHTML=h;
   const L=vis().filter(t=>t.date===sel),dd=new Date(sel+'T00:00');
   let lh=`<div class="bar">${dd.getMonth()+1}월 ${dd.getDate()}일${sel===today?' (오늘)':''}</div>`;
-  lh+=L.length?L.map(t=>`<div class="it" onclick="openForm('${t.id}')"><div class="ic">${icon(t)}</div><div class="mid"><b>${esc(t.memo)||esc(t.cat)}</b><span class="tag">${esc(t.cat)}</span><span class="tag">${esc(nm(t.who||'우리'))}</span></div><div class="amt ${t.type==='in'?'i':''}">${t.type==='in'?'+':'-'}${won(t.amount)}원</div></div>`).join(''):`<div class="empty"><button onclick="openForm()">가계부 등록</button></div>`;
+  lh+=L.length?L.map(t=>`<div class="it" onclick="openForm('${t.id}')"><div class="ic">${icon(t)}</div><div class="mid"><b>${esc(t.memo)||esc(t.cat)}</b><span class="tag">${esc(t.cat)}</span><span class="tag">${esc(nm(t.who||'우리'))}</span></div><div class="amt ${t.type==='in'?'i':''}">${t.type==='in'?'+':'-'}${won(t.amount)}원</div></div>`).join('')+`<div class="empty" style="padding:24px 0"><button onclick="openForm()">가계부 등록</button></div>`:`<div class="empty"><button onclick="openForm()">가계부 등록</button></div>`;
   $('list').innerHTML=lh;
 }
 function selDay(k){sel=k;render()}
 function openForm(id){
   const t=id?all.find(x=>x.id===id):null;
-  f=t?{...t}:{type:'out',cat:'식비',who:'나',memo:'',amount:''};
+  f=t?{...t}:{type:'out',cat:'식비',who:'우리',memo:'',amount:''};
   drawForm(!!t);$('mask').style.display='block';$('sheet').style.display='block';
 }
 function drawForm(isEdit){
@@ -197,7 +205,7 @@ function drawForm(isEdit){
   <input id="fa" type="text" inputmode="numeric" autocomplete="off" placeholder="금액 (원)" value="${f.amount?Number(f.amount).toLocaleString('ko-KR'):''}" oninput="fmtAmt(this)">
   <input id="fm" placeholder="내용" value="${esc(f.memo)}" oninput="f.memo=this.value">
   <div class="chips">${CAT[f.type].map(c=>`<button class="${f.cat===c[0]?'on':''}" onclick="f.cat='${c[0]}';drawForm(${isEdit})">${c[1]} ${c[0]}</button>`).join('')}</div>
-  <div class="chips">${WHO.map(w=>`<button class="${f.who===w?'on':''}" onclick="f.who='${w}';drawForm(${isEdit})">${nm(w)}</button>`).join('')}</div>
+  <div class="chips">${FORMWHO.map(w=>`<button class="${f.who===w?'on':''}" onclick="f.who='${w}';drawForm(${isEdit})">${nm(w)}</button>`).join('')}</div>
   <div class="btns">${isEdit?'<button class="del" onclick="del()">삭제</button>':''}<button class="save" onclick="commit(${isEdit})">저장</button></div>`;
 }
 function fmtAmt(el){
@@ -219,7 +227,7 @@ function commit(isEdit){
 function del(){if(!confirm('삭제할까요?')||!db)return;col().doc(f.id).delete().catch(fail);closeForm()}
 function closeForm(){$('mask').style.display='none';$('sheet').style.display='none'}
 let sp='m',sref=new Date(),st='out',fc='',fw='',cr=['',''],exp=false;
-const COL={식비:'#00c98a',생필품:'#08c8c0',카페:'#a1887f',건강:'#6fcf1b',주거비:'#5c7cfa',주유비:'#f08c00',미용:'#e64980',교통:'#7950f2',문화:'#15aabf',공과금:'#868e96',여행:'#12b886',패션:'#c6c800',편의점:'#fa5252',오락:'#be4bdb',선물:'#ff8787',데이트:'#f783ac',교육:'#4dabf7',통신:'#74c0fc',기타:'#9aa0a6',생활비:'#08c8c0',보너스:'#00c98a',이월:'#adb5bd'};
+const COL={식비:'#00c98a',생필품:'#08c8c0',카페:'#a1887f',건강:'#6fcf1b',주거비:'#5c7cfa',주유비:'#f08c00',미용:'#e64980',교통:'#7950f2',문화:'#15aabf',공과금:'#868e96',여행:'#12b886',패션:'#c6c800',편의점:'#fa5252',오락:'#be4bdb',선물:'#ff8787',데이트:'#f783ac',교육:'#4dabf7',통신:'#74c0fc',육아:'#ffa94d',기타:'#9aa0a6',생활비:'#08c8c0',보너스:'#00c98a',이월:'#adb5bd'};
 const WCOL={나:'#1f4fd6',아내:'#e24f9b',아기:'#f5a623',우리:'#8a1fd0'};
 const ALLCAT=[...new Set([...CAT.out,...CAT.in].map(c=>c[0]))];
 function openStats(){
@@ -401,5 +409,21 @@ document.addEventListener('touchend',e=>{
   if(Date.now()-tt<700&&Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.5)stepMonth(dx>0?-1:1);
 },{passive:true});
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+// 뒤로가기 → 종료 확인
+let exitGuard=false,exiting=false;
+function armBack(){
+  if(exitGuard)return;
+  if(history.state&&history.state.g){exitGuard=true;return}
+  history.pushState({g:1},'');exitGuard=true;
+}
+function exitCancel(){$('exitBox').style.display='none';history.pushState({g:1},'');exitGuard=true}
+function exitOk(){exiting=true;$('exitBox').style.display='none';history.back()}
+addEventListener('click',armBack,true);
+addEventListener('touchend',armBack,true);
+addEventListener('popstate',()=>{
+  if(exiting)return;
+  exitGuard=false;
+  $('exitBox').style.display='flex';
+});
 boot();
 </script></body></html>
